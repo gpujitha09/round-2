@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Event Traffic Impact Predictor API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: predict
+    description: Prediction operations
+  - name: feedback
+    description: Feedback operations
+  - name: history
+    description: Historical analytics
 paths:
   /healthz:
     get:
@@ -24,6 +30,90 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /predict:
+    post:
+      operationId: predictImpact
+      tags: [predict]
+      summary: Predict event traffic impact
+      description: Returns severity score and deployment recommendations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventInput"
+      responses:
+        "200":
+          description: Prediction result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictionResult"
+        "400":
+          description: Invalid input
+
+  /feedback:
+    post:
+      operationId: submitFeedback
+      tags: [feedback]
+      summary: Submit post-event feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackInput"
+      responses:
+        "201":
+          description: Feedback saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+        "400":
+          description: Invalid input
+    get:
+      operationId: listFeedback
+      tags: [feedback]
+      summary: List all submitted feedback
+      responses:
+        "200":
+          description: List of feedback entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Feedback"
+
+  /history:
+    get:
+      operationId: getHistory
+      tags: [history]
+      summary: Get historical analytics data
+      description: Returns aggregated stats from the dataset for charts and summaries
+      responses:
+        "200":
+          description: Historical analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryData"
+
+  /history/stats:
+    get:
+      operationId: getHistoryStats
+      tags: [history]
+      summary: Get high-level statistics
+      responses:
+        "200":
+          description: Stats summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +124,283 @@ components:
       required:
         - status
 
+    EventInput:
+      type: object
+      required:
+        - event_type
+        - event_cause
+        - requires_road_closure
+        - veh_type
+        - zone
+        - corridor
+        - latitude
+        - longitude
+        - hour
+        - day_of_week
+        - month
+      properties:
+        event_type:
+          type: string
+          enum: [planned, unplanned]
+        event_cause:
+          type: string
+          enum:
+            [
+              accident,
+              congestion,
+              construction,
+              debris,
+              fog_low_visibility,
+              others,
+              pot_holes,
+              procession,
+              protest,
+              public_event,
+              road_conditions,
+              test_demo,
+              tree_fall,
+              vehicle_breakdown,
+              vip_movement,
+              water_logging,
+            ]
+        requires_road_closure:
+          type: boolean
+        veh_type:
+          type: string
+          enum:
+            [
+              auto,
+              bmtc_bus,
+              heavy_vehicle,
+              ksrtc_bus,
+              lcv,
+              others,
+              private_bus,
+              private_car,
+              taxi,
+              truck,
+            ]
+        zone:
+          type: string
+          enum:
+            [
+              "Central Zone 1",
+              "Central Zone 2",
+              "East Zone 1",
+              "East Zone 2",
+              "North Zone 1",
+              "North Zone 2",
+              "South Zone 1",
+              "South Zone 2",
+              "West Zone 1",
+              "West Zone 2",
+            ]
+        corridor:
+          type: string
+          enum:
+            [
+              "Airport New South Road",
+              "Bannerghata Road",
+              "Bellary Road 1",
+              "Bellary Road 2",
+              "CBD 1",
+              "CBD 2",
+              "Hennur Main Road",
+              "Hosur Road",
+              "IRR(Thanisandra road)",
+              "Magadi Road",
+              "Mysore Road",
+              "Non-corridor",
+              "ORR East 1",
+              "ORR East 2",
+              "ORR North 1",
+              "ORR North 2",
+              "ORR West 1",
+              "Old Airport Road",
+              "Old Madras Road",
+              "Tumkur Road",
+              "Varthur Road",
+              "West of Chord Road",
+            ]
+        latitude:
+          type: number
+        longitude:
+          type: number
+        hour:
+          type: integer
+          minimum: 0
+          maximum: 23
+        day_of_week:
+          type: integer
+          minimum: 0
+          maximum: 6
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+
+    PredictionResult:
+      type: object
+      required:
+        - severity_score
+        - severity_band
+        - police_units_needed
+        - barricade_points
+        - diversion_route_1
+        - diversion_route_2
+        - recommended_action
+        - impact_radius_meters
+        - event_cause
+        - zone
+        - latitude
+        - longitude
+      properties:
+        severity_score:
+          type: number
+          description: Score 0-100
+        severity_band:
+          type: string
+          enum: [Low, Medium, High]
+        police_units_needed:
+          type: integer
+        barricade_points:
+          type: integer
+        diversion_route_1:
+          type: string
+        diversion_route_2:
+          type: string
+        recommended_action:
+          type: string
+        impact_radius_meters:
+          type: integer
+        event_cause:
+          type: string
+        zone:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+
+    FeedbackInput:
+      type: object
+      required:
+        - predicted_score
+        - predicted_band
+        - actual_severity
+        - actual_police_deployed
+        - diversion_used
+      properties:
+        predicted_score:
+          type: number
+        predicted_band:
+          type: string
+          enum: [Low, Medium, High]
+        actual_severity:
+          type: string
+          enum: [Low, Medium, High]
+        actual_police_deployed:
+          type: integer
+        diversion_used:
+          type: string
+          enum: [Yes, No, Partial]
+        notes:
+          type: ["string", "null"]
+
+    Feedback:
+      type: object
+      required:
+        - id
+        - predicted_score
+        - predicted_band
+        - actual_severity
+        - actual_police_deployed
+        - diversion_used
+        - created_at
+      properties:
+        id:
+          type: integer
+        predicted_score:
+          type: number
+        predicted_band:
+          type: string
+        actual_severity:
+          type: string
+        actual_police_deployed:
+          type: integer
+        diversion_used:
+          type: string
+        notes:
+          type: ["string", "null"]
+        created_at:
+          type: string
+
+    CauseCount:
+      type: object
+      required:
+        - cause
+        - count
+      properties:
+        cause:
+          type: string
+        count:
+          type: integer
+
+    HourCount:
+      type: object
+      required:
+        - hour
+        - count
+      properties:
+        hour:
+          type: integer
+        count:
+          type: integer
+
+    ZonePriorityCount:
+      type: object
+      required:
+        - zone
+        - high_count
+      properties:
+        zone:
+          type: string
+        high_count:
+          type: integer
+
+    HistoryData:
+      type: object
+      required:
+        - top_causes
+        - events_by_hour
+        - high_priority_by_zone
+      properties:
+        top_causes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CauseCount"
+        events_by_hour:
+          type: array
+          items:
+            $ref: "#/components/schemas/HourCount"
+        high_priority_by_zone:
+          type: array
+          items:
+            $ref: "#/components/schemas/ZonePriorityCount"
+
+    HistoryStats:
+      type: object
+      required:
+        - total_events
+        - high_priority_count
+        - low_priority_count
+        - unique_causes
+      properties:
+        total_events:
+          type: integer
+        high_priority_count:
+          type: integer
+        low_priority_count:
+          type: integer
+        unique_causes:
+          type: integer

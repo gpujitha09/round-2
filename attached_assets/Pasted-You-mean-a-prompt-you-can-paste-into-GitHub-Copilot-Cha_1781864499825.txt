@@ -1,0 +1,121 @@
+You mean a prompt you can paste into **GitHub Copilot Chat** to build this — same way you've worked before on your other projects. Got it.
+
+Here's the complete prompt — copy and paste this entire thing into GitHub Copilot Chat:
+
+---
+
+Build a React + Vite frontend for a traffic event impact prediction dashboard called "Event Traffic Impact Predictor" for Flipkart Gridlock Hackathon 2.0 Theme 2: Event-Driven Congestion.
+
+**Backend API is already running at http://localhost:8000. Use these endpoints:**
+- POST /predict — sends event details, gets back severity score + recommendations
+- POST /feedback — sends actual outcome after event
+- GET /feedback — gets all logged feedback
+- GET /history — gets historical charts data
+
+**Tech stack:**
+- React + Vite
+- Axios for API calls
+- Leaflet.js + react-leaflet for map (npm install leaflet react-leaflet)
+- Recharts for charts (npm install recharts)
+- Plain CSS for styling (no Tailwind, no Material UI)
+
+**Project structure to create:**
+```
+frontend/
+├── src/
+│   ├── App.jsx
+│   ├── App.css
+│   ├── components/
+│   │   ├── PredictForm.jsx
+│   │   ├── ResultCard.jsx
+│   │   ├── MapView.jsx
+│   │   ├── FeedbackForm.jsx
+│   │   └── HistoricalCharts.jsx
+├── index.html
+└── package.json
+```
+
+**App.jsx should have 4 tabs:**
+1. Predict Impact
+2. Historical Analysis
+3. Zone Map
+4. Feedback Log
+
+**PredictForm.jsx — input fields (all dropdowns/inputs):**
+- event_type: dropdown ['planned', 'unplanned']
+- event_cause: dropdown ['accident', 'congestion', 'construction', 'debris', 'fog_low_visibility', 'others', 'pot_holes', 'procession', 'protest', 'public_event', 'road_conditions', 'test_demo', 'tree_fall', 'vehicle_breakdown', 'vip_movement', 'water_logging']
+- requires_road_closure: dropdown [true, false]
+- veh_type: dropdown ['auto', 'bmtc_bus', 'heavy_vehicle', 'ksrtc_bus', 'lcv', 'others', 'private_bus', 'private_car', 'taxi', 'truck']
+- zone: dropdown ['Central Zone 1', 'Central Zone 2', 'East Zone 1', 'East Zone 2', 'North Zone 1', 'North Zone 2', 'South Zone 1', 'South Zone 2', 'West Zone 1', 'West Zone 2']
+- corridor: dropdown ['Airport New South Road', 'Bannerghata Road', 'Bellary Road 1', 'Bellary Road 2', 'CBD 1', 'CBD 2', 'Hennur Main Road', 'Hosur Road', 'IRR(Thanisandra road)', 'Magadi Road', 'Mysore Road', 'Non-corridor', 'ORR East 1', 'ORR East 2', 'ORR North 1', 'ORR North 2', 'ORR West 1', 'Old Airport Road', 'Old Madras Road', 'Tumkur Road', 'Varthur Road', 'West of Chord Road']
+- latitude: number input (default 12.9716)
+- longitude: number input (default 77.5946)
+- hour: slider 0-23
+- day_of_week: dropdown 0-6 showing Monday to Sunday
+- month: dropdown 1-12 showing Jan to Dec
+- Submit button calls POST /predict with all these fields as JSON body
+
+**ResultCard.jsx — shows after prediction:**
+- Severity score (0-100) displayed as a colored badge: green if Low, orange if Medium, red if High
+- Severity band (Low / Medium / High)
+- Police units needed
+- Barricade points
+- Diversion Route 1 and Diversion Route 2
+- Recommended action
+- Impact radius in meters
+
+**MapView.jsx — Leaflet map:**
+- Centered on the predicted event latitude/longitude
+- Blue marker at event location with popup showing event cause and zone
+- Colored circle around event location: green for Low, orange for Medium, red for High. Radius = impact_radius_meters from API response
+- Two gray dashed polylines from event location showing diversion direction (offset by 0.012 degrees each direction)
+- Two gray markers at end of each polyline labeled Diversion Route A and Diversion Route B
+
+**HistoricalCharts.jsx — calls GET /history and shows:**
+- 4 stat cards at top: Total Events, High Priority count, Low Priority count, Unique Causes
+- Bar chart: Top 10 event causes by count (use Recharts BarChart)
+- Line chart: Events by hour of day (use Recharts LineChart)
+- Bar chart: High priority events by zone (use Recharts BarChart)
+
+**FeedbackForm.jsx — calls POST /feedback:**
+- Shows predicted score and band from last prediction at top
+- actual_severity: dropdown ['Low', 'Medium', 'High']
+- actual_police_deployed: number input
+- diversion_used: dropdown ['Yes', 'No', 'Partial']
+- notes: textarea
+- Submit button saves feedback
+- Below the form, calls GET /feedback and shows all logged feedback in a table
+
+**Styling requirements:**
+- Dark theme overall (background #0f172a, card background #1e293b)
+- Red accent color #FF4B4B for headings and buttons
+- White text
+- Cards with border-radius 12px and subtle box-shadow
+- Responsive layout using CSS grid
+
+**Important:**
+- Add "import 'leaflet/dist/leaflet.css'" at the top of MapView.jsx
+- Fix Leaflet default marker icon issue with this code in MapView.jsx:
+```javascript
+import L from 'leaflet'
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
+```
+- Pass prediction result and last event details from App.jsx down to MapView and FeedbackForm as props
+- Use axios for all API calls (npm install axios)
+
+---
+
+Paste that into GitHub Copilot Chat and it will generate all the files. Once it generates the code, run these in your `frontend/` folder:
+
+```
+npm install
+npm install axios leaflet react-leaflet recharts
+npm run dev
+```
+
+Then tell me what shows up.
