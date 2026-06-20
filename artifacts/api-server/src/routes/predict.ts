@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
 import { PredictImpactBody } from "@workspace/api-zod";
+import { logger } from "../lib/logger";
+import { predictSeverityWithModel } from "../lib/severity-model";
 
 const router: IRouter = Router();
 
@@ -53,32 +55,38 @@ router.post("/predict", async (req, res): Promise<void> => {
   }
 
   const d = parsed.data;
+  const modelPrediction = predictSeverityWithModel(d);
 
-  let score = 30;
+  let score = modelPrediction?.severity_score ?? 30;
+  let band = modelPrediction?.severity_band ?? "Medium";
 
-  if (HIGH_CAUSES.has(d.event_cause)) score += 35;
-  else if (MED_CAUSES.has(d.event_cause)) score += 18;
-  else score += 5;
+  if (!modelPrediction) {
+    if (HIGH_CAUSES.has(d.event_cause)) score += 35;
+    else if (MED_CAUSES.has(d.event_cause)) score += 18;
+    else score += 5;
 
-  if (d.requires_road_closure) score += 20;
+    if (d.requires_road_closure) score += 20;
 
-  if (HEAVY_VEHICLES.has(d.veh_type)) score += 10;
-  else score += 3;
+    if (HEAVY_VEHICLES.has(d.veh_type)) score += 10;
+    else score += 3;
 
-  if (d.event_type === "unplanned") score += 8;
+    if (d.event_type === "unplanned") score += 8;
 
-  const peakHours = [7, 8, 9, 17, 18, 19, 20];
-  if (peakHours.includes(d.hour)) score += 12;
-  else if (d.hour >= 10 && d.hour <= 16) score += 4;
+    const peakHours = [7, 8, 9, 17, 18, 19, 20];
+    if (peakHours.includes(d.hour)) score += 12;
+    else if (d.hour >= 10 && d.hour <= 16) score += 4;
 
-  const corridorMultipliers: Record<string, number> = {
-    "CBD 1": 1.2, "CBD 2": 1.2, "Bellary Road 1": 1.15, "Hosur Road": 1.15,
-    "ORR East 1": 1.1, "ORR East 2": 1.1, "ORR North 1": 1.1, "Tumkur Road": 1.05,
-  };
-  score = Math.round(score * (corridorMultipliers[d.corridor] ?? 1.0));
-  score = Math.min(100, Math.max(5, score));
+    const corridorMultipliers: Record<string, number> = {
+      "CBD 1": 1.2, "CBD 2": 1.2, "Bellary Road 1": 1.15, "Hosur Road": 1.15,
+      "ORR East 1": 1.1, "ORR East 2": 1.1, "ORR North 1": 1.1, "Tumkur Road": 1.05,
+    };
+    score = Math.round(score * (corridorMultipliers[d.corridor] ?? 1.0));
+    score = Math.min(100, Math.max(5, score));
 
-  const band = score >= 65 ? "High" : score >= 35 ? "Medium" : "Low";
+    band = score >= 65 ? "High" : score >= 35 ? "Medium" : "Low";
+  } else {
+    logger.debug({ model: true }, "Prediction generated from severity model");
+  }
 
   const policeUnits = band === "High" ? 8 + Math.round(score / 20) : band === "Medium" ? 3 + Math.round(score / 25) : 1;
   const barricadePoints = band === "High" ? 6 + Math.round(score / 15) : band === "Medium" ? 2 + Math.round(score / 20) : 1;
